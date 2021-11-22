@@ -1,6 +1,6 @@
 import path from 'path';
 import fs from 'fs';
-import _ from 'lodash';
+import _ from 'lodash-es';
 import actions from 'mongoose-rest-actions';
 import mime from 'mime';
 import { expect } from '@lykmapipo/mongoose-test-helpers';

@@ -1,5 +1,5 @@
 import path from 'path';
-import _ from 'lodash';
+import _ from 'lodash-es';
 import fs from 'fs';
 import mime from 'mime';
 import { expect } from '@lykmapipo/mongoose-test-helpers';

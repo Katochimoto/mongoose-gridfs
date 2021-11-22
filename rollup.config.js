@@ -1,21 +1,21 @@
-import { keys } from 'lodash';
+import commonjs from '@rollup/plugin-commonjs';
+import { nodeResolve } from '@rollup/plugin-node-resolve';
+import json from '@rollup/plugin-json';
 import pkg from './package.json';
+
+const extensions = ['.js', '.jsx', '.ts', '.tsx', '.json'];
 
 export default [
   {
     input: 'src/index.js',
-    external: [...keys(pkg.dependencies), ...keys(pkg.peerDependencies)],
-    output: [
-      {
-        file: pkg.main,
-        format: 'cjs',
-        interop: false,
-        esModule: false,
-        preferConst: true,
-        strict: true,
-        // exports: 'auto',
-      },
-      { file: pkg.module, format: 'es' },
+    treeshake: true,
+    strictDeprecations: true,
+    external: ['mongoose', 'stream-read'],
+    output: [{ file: pkg.module, format: 'es' }],
+    plugins: [
+      json({ compact: true, preferConst: true }),
+      nodeResolve({ extensions }),
+      commonjs(),
     ],
   },
 ];

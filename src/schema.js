@@ -1,5 +1,7 @@
-import _ from 'lodash';
-import { Schema, Mixed, copyInstance } from '@lykmapipo/mongoose-common';
+import { isFunction, merge } from 'lodash-es';
+import mongoose from 'mongoose';
+
+const { Schema } = mongoose;
 
 /* constants */
 const WRITABLES = ['_id', 'filename', 'contentType', 'aliases', 'metadata'];
@@ -27,16 +29,19 @@ function createFileSchema(bucket) {
   // see https://docs.mongodb.com/manual/core/gridfs/#the-files-collection
   const FileSchema = new Schema(
     {
-      length: { type: Number, index: true },
-      chunkSize: { type: Number, index: true },
-      uploadDate: { type: Date, index: true },
-      md5: { type: String, trim: true, index: true, searchable: true },
-      filename: { type: String, trim: true, index: true, searchable: true },
-      contentType: { type: String, trim: true, index: true, searchable: true },
-      aliases: { type: [String], sort: true, index: true, searchable: true },
-      metadata: { type: Mixed },
+      length: Number,
+      chunkSize: Number,
+      uploadDate: Date,
+      md5: String,
+      filename: { type: String, trim: true },
+      contentType: { type: String, trim: true },
+      aliases: [String],
+      metadata: { type: Schema.Types.Mixed },
     },
-    { collection, id: false, emitIndexErrors: true }
+    {
+      collection,
+      id: false,
+    }
   );
 
   // expose timestamps as virtuals
@@ -81,7 +86,11 @@ function createFileSchema(bucket) {
    */
   FileSchema.methods.write = function write(stream, done) {
     // obtain file writable details
-    const file = _.pick(copyInstance(this), WRITABLES);
+    const file = {};
+    for (let i = 0; i < WRITABLES.length; i += 1) {
+      const key = WRITABLES[i];
+      file[key] = this[key];
+    }
 
     // stream file to gridfs
     return bucket.writeFile(
@@ -144,7 +153,7 @@ function createFileSchema(bucket) {
     // normalize arguments
     let $optns = optns;
     let cb = done;
-    if (_.isFunction(optns)) {
+    if (isFunction(optns)) {
       cb = optns;
       $optns = {};
     }
@@ -152,7 +161,7 @@ function createFileSchema(bucket) {
     // stream file out of gridfs
     const { _id } = this;
     const { filename } = this;
-    const $$optns = _.merge({}, $optns, { _id, filename });
+    const $$optns = merge({}, $optns, { _id, filename });
     return bucket.readFile($$optns, cb);
   };
 
