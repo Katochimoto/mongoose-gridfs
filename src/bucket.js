@@ -585,10 +585,14 @@ function createModel(optns, ...plugins) {
   let { connection, modelName, bucketName } = optns || {};
   connection = connection || mongoose.connection;
   modelName = modelName || DEFAULT_BUCKET_MODEL_NAME;
-  bucketName =
-    modelName === DEFAULT_BUCKET_MODEL_NAME
-      ? DEFAULT_BUCKET_NAME
-      : toCollectionName(modelName);
+
+  if (modelName === DEFAULT_BUCKET_MODEL_NAME) {
+    bucketName = DEFAULT_BUCKET_NAME;
+  } else if (!bucketName && modelName) {
+    bucketName = toCollectionName(modelName);
+  } else if (!bucketName) {
+    bucketName = DEFAULT_BUCKET_NAME;
+  }
 
   const bucket = createBucket({ ...optns, connection, modelName, bucketName });
   const schema = createFileSchema(bucket, { metadataSchema });
