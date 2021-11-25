@@ -1,4 +1,3 @@
-import { isFunction, merge } from 'lodash-es';
 import mongoose from 'mongoose';
 
 const { Schema } = mongoose;
@@ -11,6 +10,7 @@ const WRITABLES = ['_id', 'filename', 'contentType', 'aliases', 'metadata'];
  * @name createFileSchema
  * @description Create mongoose schema compactible with gridfs files collection.
  * @param {object} bucket Valid instance of `GridFSBucket`
+ * @param {object} options Options to create schema
  * @returns {object} valid mongoose schema to access specific gridfs
  * files collection.
  * @see {@link https://docs.mongodb.com/manual/core/gridfs/}
@@ -21,9 +21,12 @@ const WRITABLES = ['_id', 'filename', 'contentType', 'aliases', 'metadata'];
  * @version 0.1.0
  * @private
  */
-function createFileSchema(bucket) {
+function createFileSchema(bucket, options) {
   // obtain collection name from bucket
   const collection = bucket.collectionName;
+
+  const metadataSchema =
+    (options && options.metadataSchema) || Schema.Types.Mixed;
 
   // gridfs files collection compactible schema
   // see https://docs.mongodb.com/manual/core/gridfs/#the-files-collection
@@ -36,7 +39,7 @@ function createFileSchema(bucket) {
       filename: { type: String, trim: true },
       contentType: { type: String, trim: true },
       aliases: [String],
-      metadata: { type: Schema.Types.Mixed },
+      metadata: metadataSchema,
     },
     {
       collection,
@@ -153,7 +156,7 @@ function createFileSchema(bucket) {
     // normalize arguments
     let $optns = optns;
     let cb = done;
-    if (isFunction(optns)) {
+    if (typeof optns === 'function') {
       cb = optns;
       $optns = {};
     }
@@ -161,8 +164,7 @@ function createFileSchema(bucket) {
     // stream file out of gridfs
     const { _id } = this;
     const { filename } = this;
-    const $$optns = merge({}, $optns, { _id, filename });
-    return bucket.readFile($$optns, cb);
+    return bucket.readFile({ ...$optns, _id, filename }, cb);
   };
 
   /**

@@ -1,4 +1,3 @@
-import { isEmpty, merge, isFunction, omit, forEach } from 'lodash-es';
 import read from 'stream-read';
 import mongoose from 'mongoose';
 import createFileSchema from './schema';
@@ -8,7 +7,7 @@ const MongooseTypes = mongoose.Types;
 
 const toCollectionName = (modelName) => {
   let collectionName = modelName;
-  if (!isEmpty(modelName)) {
+  if (modelName) {
     collectionName = mongoose.pluralize()(modelName);
   }
   return collectionName;
@@ -131,13 +130,11 @@ Object.defineProperty(GridFSBucket.prototype, 'collectionName', {
  * readStream.pipe(writeStream);
  */
 GridFSBucket.prototype.createWriteStream = function createWriteStream(optns) {
-  // ensure options
-  const defaults = { _id: new ObjectId() };
-  const options = merge({}, defaults, optns);
+  const options = { _id: new ObjectId(), ...optns };
   const { _id, filename } = options;
 
   // ensure filename
-  if (isEmpty(filename)) {
+  if (!filename) {
     const error = new Error('Missing filename');
     error.status = 400;
     throw error;
@@ -184,12 +181,11 @@ GridFSBucket.prototype.createWriteStream = function createWriteStream(optns) {
  * readStream.pipe(writeStream);
  */
 GridFSBucket.prototype.createReadStream = function createReadStream(optns) {
-  // ensure options
-  const options = merge({}, optns);
+  const options = { ...optns };
   const { _id, filename } = options;
 
   // ensure filename or _id
-  if (isEmpty(filename) && !_id) {
+  if (!filename && !_id) {
     const error = Error('Missing filename or file id');
     error.status = 400;
     throw error;
@@ -204,7 +200,7 @@ GridFSBucket.prototype.createReadStream = function createReadStream(optns) {
   }
 
   // open download stream by file name
-  if (!isEmpty(filename) && !readstream) {
+  if (filename && !readstream) {
     readstream = this.openDownloadStreamByName(filename, options);
   }
 
@@ -249,7 +245,7 @@ GridFSBucket.prototype.createReadStream = function createReadStream(optns) {
  */
 GridFSBucket.prototype.writeFile = function writeFile(file, readstream, done) {
   // ensure file details
-  const $file = merge({}, { _id: new ObjectId() }, file);
+  const $file = { _id: new ObjectId(), ...file };
 
   // create file write stream
   const writestream = this.createWriteStream($file);
@@ -258,7 +254,7 @@ GridFSBucket.prototype.writeFile = function writeFile(file, readstream, done) {
   readstream.pipe(writestream);
 
   // work on the stream
-  if (done && isFunction(done)) {
+  if (typeof done === 'function') {
     // handle errors
     writestream.on('error', function onWriteFileError(error) {
       return done(error);
@@ -319,18 +315,12 @@ GridFSBucket.prototype.writeFile = function writeFile(file, readstream, done) {
  * bucket.readFile({ filename }, (error, buffer) => { ... });
  */
 GridFSBucket.prototype.readFile = function readFile(optns, done) {
-  // ensure options
-  const $optns = merge({}, optns);
-
-  // create file read stream
-  const readstream = this.createReadStream($optns);
+  const readstream = this.createReadStream({ ...optns });
 
   // pipe the whole stream into buffer if callback provided
-  if (done && isFunction(done)) {
+  if (typeof done === 'function') {
     return read(readstream, done);
   }
-
-  // return stream
 
   return readstream;
 };
@@ -383,12 +373,8 @@ GridFSBucket.prototype.unlink = GridFSBucket.prototype.deleteFile;
  * bucket.findOne({ filename }, (error, file) => { ... });
  */
 GridFSBucket.prototype.findOne = function findOne(optns, done) {
-  // ensure file find criteria
-  const options = merge({}, optns);
-
-  // find one existing file
   try {
-    const cursor = this.find(options, { limit: 1 });
+    const cursor = this.find({ ...optns }, { limit: 1 });
     if (!cursor) {
       const error = new Error('Collection not found');
       error.status = 400;
@@ -458,16 +444,13 @@ GridFSBucket.prototype._handleFile = function _handleFile(request, file, done) {
 
   // prepare file details
   const { aliases } = request.body || {};
-  const $file = merge(
-    {},
-    {
-      _id: new ObjectId(),
-      filename: file.originalname,
-      contentType: file.mimetype,
-      aliases: aliases ? [].concat(aliases) : aliases,
-      metadata: (request.body || {}).metadata,
-    }
-  );
+  const $file = {
+    _id: new ObjectId(),
+    filename: file.originalname,
+    contentType: file.mimetype,
+    aliases: aliases ? [].concat(aliases) : aliases,
+    metadata: (request.body || {}).metadata,
+  };
 
   // obtain bucket details
   const { bucketName } = this;
@@ -554,13 +537,13 @@ GridFSBucket.prototype._removeFile = function _removeFile(request, file, done) {
  * const bucket = createBucket({ buketName, connection });
  */
 function createBucket(optns = {}) {
-  // ensure options
-  let { connection } = optns;
-  connection = connection || mongoose.connection;
-  const options = merge({}, DEFAULT_BUCKET_OPTIONS, omit(optns, 'connection'));
+  const { connection, ...rest } = optns;
+  const options = {
+    ...DEFAULT_BUCKET_OPTIONS,
+    ...rest,
+  };
 
-  // create GridFSBucket
-  const { db } = connection;
+  const { db } = connection || mongoose.connection;
   const bucket = new GridFSBucket(db, options);
 
   return bucket;
@@ -598,26 +581,19 @@ function createBucket(optns = {}) {
  * const Photo = createModel({ modelName, connection }); // => photos.files
  */
 function createModel(optns, ...plugins) {
-  // ensure options
-  let { connection, modelName, bucketName } = merge({}, optns);
+  const { metadataSchema } = optns || {};
+  let { connection, modelName, bucketName } = optns || {};
   connection = connection || mongoose.connection;
-  modelName = isEmpty(modelName) ? DEFAULT_BUCKET_MODEL_NAME : modelName;
-  bucketName = toCollectionName(modelName);
+  modelName = modelName || DEFAULT_BUCKET_MODEL_NAME;
   bucketName =
-    modelName === DEFAULT_BUCKET_MODEL_NAME ? DEFAULT_BUCKET_NAME : bucketName;
+    modelName === DEFAULT_BUCKET_MODEL_NAME
+      ? DEFAULT_BUCKET_NAME
+      : toCollectionName(modelName);
 
-  // create bucket
-  const options = merge({}, { connection, modelName, bucketName }, optns);
-  const bucket = createBucket(options);
+  const bucket = createBucket({ ...optns, connection, modelName, bucketName });
+  const schema = createFileSchema(bucket, { metadataSchema });
 
-  // construct file schema
-  const schema = createFileSchema(bucket);
-
-  // apply schema plugins with model options
-  const schemaOptions = merge({}, schema.options);
-  forEach([...plugins], (plugin) => {
-    schema.plugin(plugin, schemaOptions);
-  });
+  [...plugins].forEach((plugin) => schema.plugin(plugin, schema.options));
 
   // hack(to be removed): fake timestamp fields
   schema.statics.CREATED_AT_FIELD = 'uploadDate';
