@@ -599,10 +599,6 @@ function createModel(optns, ...plugins) {
 
   [...plugins].forEach((plugin) => schema.plugin(plugin, schema.options));
 
-  // hack(to be removed): fake timestamp fields
-  schema.statics.CREATED_AT_FIELD = 'uploadDate';
-  schema.statics.UPDATED_AT_FIELD = 'uploadDate';
-
   // compile file model
   const fileModel = connection.model(modelName, schema);
 

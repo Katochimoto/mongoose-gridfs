@@ -34,8 +34,8 @@ function createFileSchema(bucket, options) {
     {
       length: Number,
       chunkSize: Number,
-      uploadDate: Date,
       md5: String,
+      uploadDate: { type: Date, default: Date.now },
       filename: { type: String, trim: true },
       contentType: { type: String, trim: true },
       aliases: [String],
@@ -43,21 +43,8 @@ function createFileSchema(bucket, options) {
     },
     {
       collection,
-      id: false,
     }
   );
-
-  // expose timestamps as virtuals
-  FileSchema.virtual('createdAt').get(function wireCreatedAtVirtualType() {
-    return this.uploadDate;
-  });
-  FileSchema.virtual('updatedAt').get(function wireUpdateAtVirtualType() {
-    return this.uploadDate;
-  });
-
-  // allow virtuals to be included in toJSON and toObject
-  FileSchema.set('toJSON', { virtuals: true });
-  FileSchema.set('toObject', { virtuals: true });
 
   // attach bucket instance
   FileSchema.statics.bucket = bucket;

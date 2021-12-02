@@ -35,8 +35,8 @@ function createFileSchema(bucket, options) {
     {
       length: Number,
       chunkSize: Number,
-      uploadDate: Date,
       md5: String,
+      uploadDate: { type: Date, default: Date.now },
       filename: { type: String, trim: true },
       contentType: { type: String, trim: true },
       aliases: [String],
@@ -44,21 +44,8 @@ function createFileSchema(bucket, options) {
     },
     {
       collection,
-      id: false,
     }
   );
-
-  // expose timestamps as virtuals
-  FileSchema.virtual('createdAt').get(function wireCreatedAtVirtualType() {
-    return this.uploadDate;
-  });
-  FileSchema.virtual('updatedAt').get(function wireUpdateAtVirtualType() {
-    return this.uploadDate;
-  });
-
-  // allow virtuals to be included in toJSON and toObject
-  FileSchema.set('toJSON', { virtuals: true });
-  FileSchema.set('toObject', { virtuals: true });
 
   // attach bucket instance
   FileSchema.statics.bucket = bucket;
@@ -923,10 +910,6 @@ function createModel(optns, ...plugins) {
   const schema = createFileSchema(bucket, { metadataSchema });
 
   [...plugins].forEach((plugin) => schema.plugin(plugin, schema.options));
-
-  // hack(to be removed): fake timestamp fields
-  schema.statics.CREATED_AT_FIELD = 'uploadDate';
-  schema.statics.UPDATED_AT_FIELD = 'uploadDate';
 
   // compile file model
   const fileModel = connection.model(modelName, schema);
