@@ -1,4 +1,3 @@
-import read from 'stream-read';
 import mongoose from 'mongoose';
 
 const { Schema } = mongoose;
@@ -111,7 +110,6 @@ function createFileSchema(bucket, options) {
    * streaming from.
    * @param {number} [optns.end] Optional 0-based offset in bytes to stop
    * streaming before.
-   * @param {Function} [done] a callback to invoke on success or error.
    *
    * Warn!: Pass callback if filesize is small enough.
    * Otherwise consider using stream instead.
@@ -127,11 +125,6 @@ function createFileSchema(bucket, options) {
    * @instance
    * @example
    *
-   * // small file
-   * Attachment.findById(_id, (error, attachment) => {
-   *   attachment.read((error, content) => { ... });
-   * });
-   *
    * // large file
    * Attachment.findById(_id, (error, attachment) => {
    *   const readstream = attachment.read();
@@ -140,19 +133,11 @@ function createFileSchema(bucket, options) {
    *   stream.on('close', fn);
    * });
    */
-  FileSchema.methods.read = function read(optns, done) {
-    // normalize arguments
-    let $optns = optns;
-    let cb = done;
-    if (typeof optns === 'function') {
-      cb = optns;
-      $optns = {};
-    }
-
+  FileSchema.methods.read = function read(optns) {
     // stream file out of gridfs
     const { _id } = this;
     const { filename } = this;
-    return bucket.readFile({ ...$optns, _id, filename }, cb);
+    return bucket.readFile({ ...optns, _id, filename });
   };
 
   /**
@@ -247,7 +232,6 @@ function createFileSchema(bucket, options) {
    *
    * Warn!: Pass callback if filesize is small enough.
    * Otherwise consider using stream instead.
-   * @param {Function} [done] a callback to invoke on success or error
    * @returns {object} a GridFSBucketReadStream instance.
    * @see {@link https://docs.mongodb.com/manual/core/gridfs/}
    * @see {@link http://mongodb.github.io/node-mongodb-native}
@@ -270,8 +254,8 @@ function createFileSchema(bucket, options) {
    * stream.on('data', fn);
    * stream.on('close', fn);
    */
-  FileSchema.statics.read = function read(optns, done) {
-    return bucket.readFile(optns, done);
+  FileSchema.statics.read = function read(optns) {
+    return bucket.readFile(optns);
   };
 
   /**
@@ -598,7 +582,6 @@ GridFSBucket.prototype.writeFile = function writeFile(file, readstream, done) {
  * streaming from.
  * @param {number} [optns.end] Optional 0-based offset in bytes to stop
  * streaming before.
- * @param {Function} [done] a callback to invoke on success or error.
  *
  * Warn!: Pass callback if filesize is small enough.
  * Otherwise consider using stream instead.
@@ -620,20 +603,9 @@ GridFSBucket.prototype.writeFile = function writeFile(file, readstream, done) {
  * const bucket = createBucket();
  * const filename = 'filename.txt';
  * const readStream = bucket.readFile({ filename });
- *
- * // small file
- * const bucket = createBucket();
- * const filename = 'filename.txt';
- * bucket.readFile({ filename }, (error, buffer) => { ... });
  */
-GridFSBucket.prototype.readFile = function readFile(optns, done) {
+GridFSBucket.prototype.readFile = function readFile(optns) {
   const readstream = this.createReadStream({ ...optns });
-
-  // pipe the whole stream into buffer if callback provided
-  if (typeof done === 'function') {
-    return read(readstream, done);
-  }
-
   return readstream;
 };
 

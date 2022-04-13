@@ -10,7 +10,7 @@ export default [
     input: 'src/index.js',
     treeshake: true,
     strictDeprecations: true,
-    external: ['mongoose', 'stream-read'],
+    external: ['mongoose'],
     output: [{ file: pkg.module, format: 'es' }],
     plugins: [
       json({ compact: true, preferConst: true }),

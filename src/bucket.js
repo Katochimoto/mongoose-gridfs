@@ -1,4 +1,3 @@
-import read from 'stream-read';
 import mongoose from 'mongoose';
 import createFileSchema from './schema';
 
@@ -286,7 +285,6 @@ GridFSBucket.prototype.writeFile = function writeFile(file, readstream, done) {
  * streaming from.
  * @param {number} [optns.end] Optional 0-based offset in bytes to stop
  * streaming before.
- * @param {Function} [done] a callback to invoke on success or error.
  *
  * Warn!: Pass callback if filesize is small enough.
  * Otherwise consider using stream instead.
@@ -308,20 +306,9 @@ GridFSBucket.prototype.writeFile = function writeFile(file, readstream, done) {
  * const bucket = createBucket();
  * const filename = 'filename.txt';
  * const readStream = bucket.readFile({ filename });
- *
- * // small file
- * const bucket = createBucket();
- * const filename = 'filename.txt';
- * bucket.readFile({ filename }, (error, buffer) => { ... });
  */
-GridFSBucket.prototype.readFile = function readFile(optns, done) {
+GridFSBucket.prototype.readFile = function readFile(optns) {
   const readstream = this.createReadStream({ ...optns });
-
-  // pipe the whole stream into buffer if callback provided
-  if (typeof done === 'function') {
-    return read(readstream, done);
-  }
-
   return readstream;
 };
 
